@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room</title>
+    <style>
+        body {
+            background-color: #000000;
+            font-family: Arial, sans-serif;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .room-controls, .message-controls {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+        }
+        input, button {
+            margin: 5px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        input {
+            width: 200px;
+            border: 1px solid #ccc;
+        }
+        button {
+            border: none;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #status {
+            margin-top: 10px;
+            color: #00ff00;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h3>Room Controls</h3>
+        <button id="leaveRoom">Leave Room</button>
+
+        <h3>Message Controls</h3>
+        <input type="text" id="message" placeholder="Enter message">
+        <button id="send">Send Message</button>
+
+        
+        
+    </div>
+    <div id="status"></div>
+    <div class="chat">
+        <ul id="messages"></ul>
+
+        </ul>
+    </div>
+<script src="/socket.io/socket.io.js"></script>
+
+
+
+<script>
+    const socket = io();
+    const status = document.getElementById('status');
+    const messagesList = document.getElementById('messages');
+    const roomCode = window.location.pathname.split('/').pop();
+    let currentRoom = null;
+
+    // Leave Room
+    document.getElementById('leaveRoom').addEventListener('click', () => {
+        socket.emit('leave-room', roomCode);
+        status.textContent = `Left room: ${roomCode}`;
+        window.location.href = '/index.html';
+    });
+
+    // Send Message
+    document.getElementById('send').addEventListener('click', () => {
+        const messageInput = document.getElementById('message');
+        const message = messageInput.value;
+        
+        if (!currentRoom) {
+            status.textContent = 'Please join a room first';
+            return;
+        }
+
+        if (!message) {
+            status.textContent = 'Please enter a message';
+            return;
+        }
+
+        socket.emit('user-message', { message, roomCode }, (response) => {
+            if (response.status === "ok") {
+                status.textContent = 'Message sent';
+                messageInput.value = '';
+            }
+        }); 
+    }); 
+
+    // Socket event listeners
+    socket.on('connect', () => {
+        status.textContent = 'Connected to server';
+        socket.emit('join-room', roomCode, (response) => {
+            if (response.status === "ok") {
+                currentRoom = roomCode;
+                status.textContent = `Joined room: ${roomCode}`;
+            } else {
+                status.textContent = `Error joining room: ${response.error}`;
+            }
+        });
+    });
+
+    socket.on('server-message', (msg) => {
+        const li = document.createElement('li');
+        li.textContent = msg;
+        messagesList.appendChild(li);
+        status.textContent = 'New message received';
+    });
+
+    socket.on('disconnect', () => {
+        status.textContent = 'Disconnected from server';
+        currentRoom = null;
+    });
+</script>
+
+</body>
+</html>
