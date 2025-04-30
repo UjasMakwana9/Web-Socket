@@ -1,136 +1,343 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Room</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
     <style>
         body {
-            background-color: #000000;
-            font-family: Arial, sans-serif;
+            background-color: #1e1e1e;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: #ffffff;
             margin: 0;
             padding: 20px;
+            line-height: 1.6;
         }
+
         .container {
-            max-width: 600px;
+            max-width: 1200px;
             margin: 0 auto;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
         }
-        .room-controls, .message-controls {
+
+        .chat-section {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            height: auto;
+        }
+
+        .editor-section {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            height: calc(100vh - 80px);
+        }
+
+        .room-controls,
+        .message-controls {
             margin: 20px 0;
             padding: 15px;
-            border: 1px solid #333;
-            border-radius: 5px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background: #363636;
         }
-        input, button {
+
+        input,
+        button {
             margin: 5px;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
         }
+
         input {
-            width: 200px;
-            border: 1px solid #ccc;
+            width: calc(100% - 30px);
+            background: #1e1e1e;
+            border: 1px solid #444;
+            color: #fff;
         }
+
         button {
             border: none;
-            background-color: #007bff;
+            background-color: #0078d4;
             color: white;
             cursor: pointer;
+            transition: background-color 0.3s;
+            font-weight: 500;
         }
+
         button:hover {
-            background-color: #0056b3;
+            background-color: #2b88d8;
         }
+
         #status {
             margin-top: 10px;
-            color: #00ff00;
+            color: #3cb371;
+            padding: 10px;
+            background: #1e1e1e;
+            border-radius: 4px;
+        }
+
+        #messages {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: calc(100vh - 400px);
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #444 #2d2d2d;
+        }
+
+        #messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #messages::-webkit-scrollbar-track {
+            background: #2d2d2d;
+        }
+
+        #messages::-webkit-scrollbar-thumb {
+            background-color: #444;
+            border-radius: 4px;
+        }
+
+        .chat {
+            height: calc(100vh - 250px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .CodeMirror {
+            height: calc(100vh - 150px) !important;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        h3 {
+            color: #0078d4;
+            margin-bottom: 15px;
+        }
+
+        /* Add these media queries at the end of the style section */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .chat-section {
+                height: auto;
+                min-height: 300px;
+            }
+
+            .editor-section {
+                height: calc(100vh - 400px);
+            }
+
+            .CodeMirror {
+                height: calc(100vh - 460px) !important;
+            }
+
+            #messages {
+                max-height: 200px;
+            }
+
+            input,
+            button {
+                width: calc(100% - 10px);
+                margin: 5px 0;
+            }
+
+            .chat {
+                height: auto;
+                min-height: 200px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 5px;
+            }
+
+            .chat-section,
+            .editor-section {
+                padding: 10px;
+            }
+
+            h3 {
+                font-size: 16px;
+                margin-bottom: 10px;
+            }
+
+            input,
+            button {
+                padding: 8px;
+                font-size: 14px;
+            }
+
+            .CodeMirror {
+                font-size: 12px;
+            }
         }
     </style>
 </head>
+
 <body>
-
     <div class="container">
-        <h3>Room Controls</h3>
-        <button id="leaveRoom">Leave Room</button>
+        <div class="chat-section">
+            <h3>Room Controls</h3>
+            <button id="leaveRoom">Leave Room</button>
 
-        <h3>Message Controls</h3>
-        <input type="text" id="message" placeholder="Enter message">
-        <button id="send">Send Message</button>
+            <h3>Message Controls</h3>
+            <input type="text" id="message" placeholder="Enter message">
+            <button id="send">Send Message</button>
 
-        
-        
+            <div id="status"></div>
+            <div class="chat">
+                <h3>Chat Messages</h3>
+                <ul id="messages"></ul>
+            </div>
+        </div>
+
+        <div class="editor-section">
+            <h3>Code Editor</h3>
+            <textarea id="editor"></textarea>
+        </div>
     </div>
-    <div id="status"></div>
-    <div class="chat">
-        <ul id="messages"></ul>
 
-        </ul>
-    </div>
-<script src="/socket.io/socket.io.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+
+    <script>
+
+        const socket = io();
+        const status = document.getElementById('status');
+        const messagesList = document.getElementById('messages');
+        const roomCode = window.location.pathname.split('/').pop();
+        let currentRoom = null;
+        const realTimeInput = document.getElementById('real-time');
+        const editorValue = document.getElementById('editor');
+        let isRemoteChange = false;
 
 
+        // Socket event listeners
+        socket.on('connect', () => {
+            status.textContent = 'Connected to server';
+            socket.emit('join-room', roomCode, (response) => {
+                if (response.status === "ok") {
+                    currentRoom = roomCode;
+                    status.textContent = `Joined room: ${roomCode}`;
+                } else {
+                    status.textContent = `Error joining room: ${response.error}`;
+                }
+            });
+        });
 
-<script>
-    const socket = io();
-    const status = document.getElementById('status');
-    const messagesList = document.getElementById('messages');
-    const roomCode = window.location.pathname.split('/').pop();
-    let currentRoom = null;
+        // Disconnect
+        socket.on('disconnect', () => {
+            status.textContent = 'Disconnected from server';
+            currentRoom = null;
+        });
 
-    // Leave Room
-    document.getElementById('leaveRoom').addEventListener('click', () => {
-        socket.emit('leave-room', roomCode);
-        status.textContent = `Left room: ${roomCode}`;
-        window.location.href = '/index.html';
-    });
+        socket.on('server-message', (msg) => {
+            const li = document.createElement('li');
+            li.textContent = msg;
+            messagesList.appendChild(li);
+            status.textContent = 'New message received';
+            // Auto scroll to bottom
+            messagesList.scrollTop = messagesList.scrollHeight;
+        });
 
-    // Send Message
-    document.getElementById('send').addEventListener('click', () => {
-        const messageInput = document.getElementById('message');
-        const message = messageInput.value;
-        
-        if (!currentRoom) {
-            status.textContent = 'Please join a room first';
-            return;
-        }
+        // Leave Room
+        document.getElementById('leaveRoom').addEventListener('click', () => {
+            socket.emit('leave-room', roomCode);
+            status.textContent = `Left room: ${roomCode}`;
+            window.location.href = '/index.html';
+        });
 
-        if (!message) {
-            status.textContent = 'Please enter a message';
-            return;
-        }
+        // Send Message
+        document.getElementById('send').addEventListener('click', () => {
+            const messageInput = document.getElementById('message');
+            const message = messageInput.value;
 
-        socket.emit('user-message', { message, roomCode }, (response) => {
-            if (response.status === "ok") {
-                status.textContent = 'Message sent';
-                messageInput.value = '';
+            if (!currentRoom) {
+                status.textContent = 'Please join a room first';
+                return;
             }
-        }); 
-    }); 
 
-    // Socket event listeners
-    socket.on('connect', () => {
-        status.textContent = 'Connected to server';
-        socket.emit('join-room', roomCode, (response) => {
-            if (response.status === "ok") {
-                currentRoom = roomCode;
-                status.textContent = `Joined room: ${roomCode}`;
-            } else {
-                status.textContent = `Error joining room: ${response.error}`;
+            if (!message) {
+                status.textContent = 'Please enter a message';
+                return;
+            }
+
+            socket.emit('user-message', { message, roomCode }, (response) => {
+                if (response.status === "ok") {
+                    status.textContent = 'Message sent';
+                    messageInput.value = '';
+                }
+            });
+        });
+
+
+        // Initialize CodeMirror
+        const editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
+            mode: 'javascript',
+            theme: 'dracula',
+            lineNumbers: true,
+            autoCloseBrackets: true,
+            matchBrackets: true,
+            indentUnit: 4,
+            tabSize: 4,
+            lineWrapping: true,
+            foldGutter: true,
+            gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+            extraKeys: {
+                'Ctrl-Space': 'autocomplete'
             }
         });
-    });
 
-    socket.on('server-message', (msg) => {
-        const li = document.createElement('li');
-        li.textContent = msg;
-        messagesList.appendChild(li);
-        status.textContent = 'New message received';
-    });
+        // Replace the input event with change event
+        editor.on('change', (cm, change) => {
+            // Skip if this change was triggered by a remote update
+            if (isRemoteChange) return;
 
-    socket.on('disconnect', () => {
-        status.textContent = 'Disconnected from server';
-        currentRoom = null;
-    });
-</script>
+            const message = cm.getValue();
+            socket.emit('real-time-message', { message, roomCode }, (response) => {
+                if (response.status === "ok") {
+                    status.textContent = 'Code updated';
+                }
+            });
+        });
+
+        // Update the real-message socket event handler to properly update CodeMirror
+        socket.on('real-message', (msg) => {
+            isRemoteChange = true;
+            const currentCursor = editor.getCursor(); // Save cursor position
+            editor.setValue(msg);
+            editor.setCursor(currentCursor); // Restore cursor position
+            isRemoteChange = false;
+        });
+
+    </script>
 
 </body>
+
 </html>
